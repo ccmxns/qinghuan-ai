@@ -466,6 +466,35 @@ class ChatView extends ItemView {
         this.containerEl.addClass('workspace-leaf-content');
         this.containerEl.setAttribute('data-type', CHAT_VIEW_TYPE);
 
+        // 在创建UI元素之前处理自动清空
+        if (this.plugin.settings.autoClearOnRestart) {
+            // 检查是否有临时文件
+            const tempFile = this.plugin.app.vault.getAbstractFileByPath(this.plugin.settings.tempHistoryFile);
+            if (tempFile instanceof TFile) {
+                try {
+                    // 读取临时文件内容
+                    const content = await this.plugin.app.vault.read(tempFile);
+                    const chatHistory = this.plugin.parseMarkdownToChatHistory(content);
+                    if (chatHistory.length > 0) {
+                        // 保存为历史记录
+                        await this.plugin.saveChatHistoryToFile(chatHistory);
+                        // 清空临时文件
+                        await this.plugin.app.vault.modify(tempFile, '');
+                        // 重置聊天历史
+                        this.plugin.settings.chatHistory = [];
+                        this.messages = [];
+                        await this.plugin.saveSettings();
+                        console.log('自动清空完成');
+                    }
+                } catch (error) {
+                    console.error('处理自动清空时出错:', error);
+                }
+            }
+        }
+
+        // 继续创建UI元素...
+        // ... 其余代码保持不变 ...
+
         // 创建导航头部
         const navHeader = this.containerEl.createDiv('nav-header');
         const navButtonsContainer = navHeader.createDiv('nav-buttons-container');
@@ -620,7 +649,7 @@ class ChatView extends ItemView {
         });
 
 
-        // 创建输入框和按钮的容��
+        // 创建输入框和按钮的容
         const inputButtonContainer = inputArea.createDiv({
             attr: {
                 style: 'display: flex; gap: 8px;'
@@ -1127,8 +1156,12 @@ class ChatView extends ItemView {
         try {
             const tempFile = this.plugin.app.vault.getAbstractFileByPath(this.plugin.settings.tempHistoryFile);
             if (tempFile instanceof TFile) {
-                console.log('找到临时文件');
                 const content = await this.plugin.app.vault.read(tempFile);
+                if (content.trim() === '') {
+                    console.log('临时文件为空，不加载历史记录');
+                    return;
+                }
+                console.log('找到临时文件');
                 this.plugin.settings.chatHistory = this.plugin.parseMarkdownToChatHistory(content);
                 console.log('已加载聊天历史，消息数量:', this.plugin.settings.chatHistory.length);
                 this.renderMessages();
@@ -1141,19 +1174,13 @@ class ChatView extends ItemView {
         // 如果临时文件不存在或加载失败，创建空的临时文件
         try {
             console.log('创建新的临时文件');
-            const historyFolderPath = 'A重要文件/ai历史记录';
-            let folder = this.plugin.app.vault.getAbstractFileByPath(historyFolderPath);
-            if (!(folder instanceof TFolder)) {
-                folder = await this.plugin.app.vault.createFolder(historyFolderPath);
-                console.log('创建历史记录文件夹');
-            }
+            await this.ensureHistoryFolder();
             await this.plugin.app.vault.create(this.plugin.settings.tempHistoryFile, '');
             this.plugin.settings.chatHistory = [];
             this.renderMessages();
             console.log('临时文件已创建');
         } catch (error) {
-            // console.error('创建临时对话文件时出错:', error);
-            // new Notice('创建临时对话文件时出错');
+            console.error('创建临时对话文件时出错:', error);
         }
     }
 
@@ -1592,6 +1619,23 @@ class ChatView extends ItemView {
     // 在 ChatView 类中添加一个清理文本的辅助方法
     cleanTextContent(text) {
         return text.trim().replace(/^\n+|\n+$/g, '');  // 移除开头和结尾的空行
+    }
+
+    // 添加一个辅助方法来确保历史文件夹存在
+    async ensureHistoryFolder() {
+        const historyFolderPath = this.plugin.settings.historyPath;
+        if (!historyFolderPath) return;
+
+        const folder = this.plugin.app.vault.getAbstractFileByPath(historyFolderPath);
+        if (!(folder instanceof TFolder)) {
+            try {
+                await this.plugin.app.vault.createFolder(historyFolderPath);
+                console.log('创建历史记录文件夹');
+            } catch (error) {
+                console.error('创建历史记录文件夹失败:', error);
+                throw error;
+            }
+        }
     }
 }
 
@@ -2133,7 +2177,7 @@ module.exports = class CallAIChatPlugin extends Plugin {
 
         const files = this.app.vault.getFiles().filter(file => file.path.startsWith(historyFolderPath) && file.extension === 'md');
         if (files.length === 0) {
-            // 没���历史文件，开始新的对话
+            // 没历史文件，开始新的对话
             this.settings.chatHistory = [];
             await this.saveSettings();
             return;
