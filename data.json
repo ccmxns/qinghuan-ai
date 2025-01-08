@@ -1,0 +1,27 @@
+{
+  "apiKey": [
+  ],
+  "baseUrl": [
+    "云雾https://yunwu.ai"
+  ],
+  "model": [
+    "gpt-4o",
+    "gpt-4o-all",
+    "gpt-4o-mini",
+    "claude-3-5-sonnet-20240620",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-opus-20240229"
+  ],
+  "currentApiKey": "",
+  "currentBaseUrl": "云雾https://yunwu.ai",
+  "currentModel": "claude-3-5-sonnet-20241022",
+  "chatHistory": [],
+  "currentHistoryFile": "",
+  "tempHistoryFile": "",
+  "autoClearOnRestart": false,
+  "autoFocus": false,
+  "focusMode": false,
+  "fontSize": 17,
+  "historyPath": "",
+  "lastInputContent": ""
+}
