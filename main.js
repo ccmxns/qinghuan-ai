@@ -831,6 +831,8 @@ class ChatView extends ItemView {
             await this.callAI(content, assistantMessage);
             // AI回复完成后保存到临时文件
             await this.saveTempChatHistory();
+            // 更新下拉菜单显示
+            await this.updateDropdowns();
         } catch (error) {
             console.error('调用AI时发生错误:', error);
             assistantMessage.querySelector('.message-content').textContent = `错误: ${error.message}`;
@@ -1087,9 +1089,13 @@ class ChatView extends ItemView {
         if (baseUrlSelect) {
             baseUrlSelect.innerHTML = '';
             this.plugin.settings.baseUrl.forEach(url => {
+                const urlMatch = url.match(/(.*?)(https?:\/\/\S+)/);
+                const displayText = urlMatch && urlMatch[1].trim() 
+                    ? urlMatch[1].trim()  // 如果有备注就只显示备注
+                    : new URL(url).hostname;  // 没有备注则显示域名
                 const option = document.createElement('option');
                 option.value = url.trim();
-                option.text = url.trim();
+                option.text = displayText;
                 if (url === this.plugin.settings.currentBaseUrl) {
                     option.selected = true;
                 }
@@ -1101,9 +1107,9 @@ class ChatView extends ItemView {
             apiKeySelect.innerHTML = '';
             this.plugin.settings.apiKey.forEach(key => {
                 const match = key.match(/(.*?)(sk-\S+)/);
-                const displayText = match
-                    ? `${match[1].trim() || match[2].substring(0, 10)}...`
-                    : key;
+                const displayText = match 
+                    ? (match[1].trim() || `${match[2].substring(0, 10)}...`)  // 有备注显示备注，否则显示截断的key
+                    : (key.startsWith('sk-') ? `${key.substring(0, 10)}...` : key);  // 处理没有备注的情况
                 const option = document.createElement('option');
                 option.value = key;
                 option.text = displayText;
